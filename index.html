@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>❤️ 3D Hearts | Catch & Love ❤️</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    body {
+      min-height: 100vh;
+      background: radial-gradient(circle at 30% 10%, #ff9a9e, #fecfef, #ff6f91);
+      overflow: hidden; /* منع التمرير نهائياً */
+      font-family: 'Segoe UI', 'Poppins', system-ui, sans-serif;
+    }
+
+    /* شاشة البداية */
+    .start-screen {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle, #ffb7c5, #ff5e7e);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      transition: opacity 0.5s ease;
+    }
+    .start-screen.hide {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #enter {
+      font-size: 1.8rem;
+      padding: 15px 40px;
+      border: none;
+      border-radius: 50px;
+      background: linear-gradient(145deg, #ff1e4d, #ff4d6d);
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+      z-index: 1001;
+    }
+
+    /* لوحة النقاط */
+    #score {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background: rgba(0,0,0,0.4);
+      backdrop-filter: blur(8px);
+      padding: 8px 20px;
+      border-radius: 50px;
+      color: #fff;
+      font-size: 22px;
+      font-weight: bold;
+      z-index: 100;
+      border: 1px solid rgba(255,255,255,0.3);
+    }
+
+    /* حاوية القلب (منطقة الضغط) */
+    .heart-wrapper {
+      position: absolute;
+      width: 80px; /* مساحة أكبر للضغط */
+      height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 90;
+      /* تم حذف الـ transition من هنا لضمان دقة الكليك */
+    }
+
+    .heart-3d {
+      width: 60px;
+      height: 60px;
+      filter: drop-shadow(5px 8px 10px rgba(0,0,0,0.3));
+      transform: rotateY(15deg) rotateX(10deg);
+      pointer-events: none; /* الضغط يتم على الـ wrapper */
+    }
+
+    /* الرسالة */
+    .bubble {
+      position: absolute;
+      background: white;
+      color: #ff1e4d;
+      padding: 10px 20px;
+      border-radius: 30px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+      z-index: 500;
+      pointer-events: none;
+      white-space: nowrap;
+      animation: bubblePop 0.4s ease-out forwards;
+    }
+
+    @keyframes bubblePop {
+      0% { transform: scale(0.5); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    /* شاشة النهاية */
+    #win-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      color: white;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .win-content {
+      background: linear-gradient(135deg, #ff9a9e, #ff6f91);
+      padding: 40px;
+      border-radius: 30px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    }
+
+    #restartBtn {
+      margin-top: 20px;
+      padding: 12px 30px;
+      font-size: 1.2rem;
+      border: none;
+      border-radius: 50px;
+      background: white;
+      color: #ff1e4d;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .particle {
+      position: absolute;
+      pointer-events: none;
+      animation: fadeOut 0.6s forwards;
+    }
+
+    @keyframes fadeOut {
+      to { opacity: 0; transform: translateY(-30px); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="start-screen" id="startScreen">
+  <button id="enter">💘 ابدأ اللعب 💘</button>
+</div>
+
+<div id="score">❤️ 0 / 27</div>
+
+<div id="win-overlay">
+  <div class="win-content">
+    <h1 id="win-msg"></h1>
+    <button id="restartBtn">إعادة اللعب 🔄</button>
+  </div>
+</div>
+
+<audio id="bgMusic" src="music.mp3" loop></audio>
+<audio id="popSound" src="pop.mp3" preload="auto"></audio>
+
+<script>
+  const messages = [
+      "💕 صباح الخير يقمري", " أحلى حد يصحي", "❤️ بحبك اوي", "🌸 حقك عليا ياحببتي",
+      "😂 ياجامدة", "🥺 متزعليش يروحي", "🫶 إنتي الحتة بتاعتي", "😂 لو مضحكتيش هركبك!",
+      "😍 ضحكتك حلوه أوي", " بخ", " غلطت بس بحبك", "💪 يا أجمد بت",
+      "❤️ بحب عيونك", "💋 بحب شفايفك", "😂🍑 بحب طيازك", "🙈😂 بحب صدرك",
+      "🙈😂 بعشق كسكوسك بقا", "بحب كلامك", "نفسي أسمع صوتك", "💋 موووااااه",
+      " إنتي قلبي", "مقدرش أزعلك", "🥺 وحشتيني", "مش هكررها",
+      " متجيبي بوسه", "مراتي اهي اهي اهي", "🥹 سامحيني بقا"
+  ];
+
+  const TOTAL = messages.length;
+  let currentScore = 0;
+  let isGameRunning = false;
+  let activeAnimations = [];
+
+  const heartSVG = `
+    <svg class="heart-3d" viewBox="0 0 100 100">
+      <defs>
+        <radialGradient id="grad" cx="30%" cy="30%" r="70%">
+          <stop offset="0%" stop-color="#ff758f"/>
+          <stop offset="100%" stop-color="#e6005c"/>
+        </radialGradient>
+      </defs>
+      <path d="M50,30 C50,15 30,5 18,18 C5,31 10,50 30,65 L50,80 L70,65 C90,50 95,31 82,18 C70,5 50,15 50,30 Z" fill="url(#grad)" />
+    </svg>`;
+
+  function createHeart() {
+    if (!isGameRunning || currentScore >= TOTAL) return;
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'heart-wrapper';
+    wrapper.innerHTML = heartSVG;
+    
+    const startX = Math.random() * (window.innerWidth - 80);
+    let posY = -100;
+    const speed = 3 + Math.random() * 2 + (currentScore * 0.1); // سرعة تزيد تدريجياً
+
+    wrapper.style.left = startX + 'px';
+    document.body.appendChild(wrapper);
+
+    // استخدام pointerdown لسرعة استجابة فائقة
+    wrapper.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        popHeart(wrapper, startX, posY);
+    });
+
+    function move() {
+      if (!wrapper.parentElement) return;
+      posY += speed;
+      wrapper.style.transform = `translateY(${posY}px)`;
+
+      if (posY > window.innerHeight) {
+        wrapper.remove();
+      } else {
+        requestAnimationFrame(move);
+      }
+    }
+    requestAnimationFrame(move);
+  }
+
+  function popHeart(el, x, y) {
+    // تشغيل الصوت
+    const pop = document.getElementById('popSound');
+    pop.currentTime = 0;
+    pop.play().catch(()=>{});
+
+    // إظهار الرسالة
+    const msg = messages[currentScore];
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.innerText = msg;
+    bubble.style.left = Math.min(x, window.innerWidth - 150) + 'px';
+    bubble.style.top = y + 'px';
+    document.body.appendChild(bubble);
+    setTimeout(() => bubble.remove(), 1500);
+
+    // تأثيرات انفجار بسيطة
+    for(let i=0; i<5; i++) {
+        const p = document.createElement('div');
+        p.className = 'particle';
+        p.innerText = '❤️';
+        p.style.left = x + 40 + 'px';
+        p.style.top = y + 40 + 'px';
+        p.style.fontSize = Math.random() * 20 + 10 + 'px';
+        document.body.appendChild(p);
+        setTimeout(() => p.remove(), 600);
+    }
+
+    el.remove();
+    currentScore++;
+    document.getElementById('score').innerText = `❤️ ${currentScore} / ${TOTAL}`;
+
+    if (currentScore >= TOTAL) {
+      endGame();
+    }
+  }
+
+  function endGame() {
+    isGameRunning = false;
+    setTimeout(() => {
+        const overlay = document.getElementById('win-overlay');
+        overlay.style.display = 'flex';
+        document.getElementById('win-msg').innerHTML = "عااااش يبت 🎉<br>خلصتي كل القلوب!";
+    }, 500);
+  }
+
+  function startSpawning() {
+    const spawn = () => {
+        if (isGameRunning && currentScore < TOTAL) {
+            createHeart();
+            setTimeout(spawn, 1000 - (currentScore * 15)); // تسريع الظهور مع الوقت
+        }
+    };
+    spawn();
+  }
+
+  document.getElementById('enter').addEventListener('click', () => {
+    document.getElementById('startScreen').classList.add('hide');
+    document.getElementById('bgMusic').play().catch(()=>{});
+    isGameRunning = true;
+    currentScore = 0;
+    document.getElementById('score').innerText = `❤️ 0 / ${TOTAL}`;
+    startSpawning();
+  });
+
+  document.getElementById('restartBtn').addEventListener('click', () => {
+    location.reload(); // أسهل طريقة لإعادة التصفير بالكامل
+  });
+</script>
+
+</body>
+</html>
