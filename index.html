@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>❤️ Catch The Hearts</title>
+  <style>
+    /* ========== RESET & BASE ========== */
+    * {
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #ff8fab;
+      font-family: 'Segoe UI', 'Arial', system-ui, sans-serif;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* ========== شاشة البداية (القلوب المتطايرة + زر النيون) ========== */
+    .start-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #ffb6c1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      transition: opacity 0.5s ease, visibility 0.5s;
+    }
+
+    .start-screen.hide {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    /* القلوب الخلفية المتحركة في شاشة البداية */
+    .floating-heart {
+      position: absolute;
+      font-size: 24px;
+      pointer-events: none;
+      animation: floatUp 8s linear forwards;
+      z-index: 1;
+    }
+
+    @keyframes floatUp {
+      0% {
+        transform: translateY(100vh) rotate(0deg);
+        opacity: 0.8;
+      }
+      100% {
+        transform: translateY(-10vh) rotate(15deg);
+        opacity: 0;
+      }
+    }
+
+    /* زر دخول نيون */
+    #enter {
+      font-size: 2rem;
+      padding: 16px 60px;
+      border: none;
+      border-radius: 60px;
+      background: #ff4d6d;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 0 12px #ff4d6d, 0 0 25px #ff4d6d, 0 0 45px #ff4d6d;
+      transition: 0.2s ease;
+      z-index: 20;
+      position: relative;
+      letter-spacing: 2px;
+    }
+
+    #enter:hover {
+      transform: scale(1.07);
+      box-shadow: 0 0 20px #ff4d6d, 0 0 40px #ff4d6d, 0 0 70px #ff4d6d;
+    }
+
+    #enter:active {
+      transform: scale(0.98);
+    }
+
+    /* ========== حاوية اللعبة (تظهر بعد الدخول) ========== */
+    .game-container {
+      position: relative;
+      width: 100%;
+      min-height: 100vh;
+      display: none;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+
+    .game-container.active {
+      display: block;
+      opacity: 1;
+    }
+
+    /* عناصر اللعبة */
+    #score {
+      position: fixed;
+      top: 18px;
+      left: 20px;
+      color: white;
+      font-size: 28px;
+      font-weight: bold;
+      text-shadow: 2px 2px 6px rgba(0,0,0,0.3);
+      background: rgba(0,0,0,0.3);
+      padding: 6px 16px;
+      border-radius: 40px;
+      backdrop-filter: blur(4px);
+      z-index: 50;
+      font-family: monospace;
+      letter-spacing: 1px;
+    }
+
+    /* صندوق الرسائل المتدرجة */
+    #msg {
+      position: fixed;
+      top: 35%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255, 255, 255, 0.96);
+      padding: 18px 28px;
+      border-radius: 60px;
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #c9184a;
+      text-align: center;
+      white-space: nowrap;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.3);
+      z-index: 200;
+      display: none;
+      font-family: 'Segoe UI', cursive;
+      border: 2px solid #ffb3c6;
+      backdrop-filter: blur(2px);
+      direction: rtl;
+    }
+
+    /* شاشة النصر */
+    #result {
+      position: fixed;
+      top: 45%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: linear-gradient(145deg, #ffd966, #ffb347);
+      color: #2d1b00;
+      font-size: 2.2rem;
+      font-weight: bold;
+      padding: 24px 42px;
+      border-radius: 70px;
+      text-align: center;
+      white-space: nowrap;
+      z-index: 300;
+      display: none;
+      box-shadow: 0 20px 35px rgba(0,0,0,0.4);
+      border: 3px solid #ffecb3;
+      font-family: 'Tahoma', cursive;
+      letter-spacing: 1px;
+    }
+
+    /* زر إعادة اللعب */
+    #restartBtn {
+      position: fixed;
+      bottom: 35px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #ff4d6d;
+      border: none;
+      padding: 12px 28px;
+      font-size: 1.2rem;
+      font-weight: bold;
+      border-radius: 50px;
+      color: white;
+      cursor: pointer;
+      z-index: 250;
+      display: none;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+      transition: 0.2s;
+      font-family: inherit;
+    }
+
+    #restartBtn:hover {
+      background: #e63946;
+      transform: translateX(-50%) scale(1.03);
+    }
+
+    /* القلوب القابلة للنقر في اللعبة */
+    .heart {
+      position: absolute;
+      font-size: 44px;
+      cursor: pointer;
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
+      transition: transform 0.05s linear;
+      z-index: 80;
+    }
+
+    .heart:active {
+      transform: scale(0.9);
+    }
+
+    /* تأثير الانفجار (قلوب صغيرة ونجوم) */
+    .burst {
+      position: absolute;
+      font-size: 28px;
+      pointer-events: none;
+      animation: burstAnim 0.7s forwards;
+      z-index: 150;
+    }
+
+    @keyframes burstAnim {
+      0% { opacity: 1; transform: scale(0.5) translateY(0); }
+      100% { opacity: 0; transform: scale(1.4) translateY(-50px); }
+    }
+
+    .star {
+      position: absolute;
+      font-size: 24px;
+      pointer-events: none;
+      animation: starAnim 0.6s forwards;
+      z-index: 140;
+    }
+
+    @keyframes starAnim {
+      0% { opacity: 0.9; transform: rotate(0deg) scale(0.6); }
+      100% { opacity: 0; transform: translateY(-45px) rotate(200deg) scale(0.2); }
+    }
+
+    /* تحسين للشاشات الصغيرة */
+    @media (max-width: 600px) {
+      .heart { font-size: 38px; }
+      #msg { font-size: 1.1rem; white-space: normal; max-width: 85%; padding: 12px 20px; text-align: center; }
+      #result { font-size: 1.5rem; white-space: normal; padding: 18px 28px; text-align: center; width: 80%; }
+      #score { font-size: 22px; top: 12px; left: 12px; }
+      #restartBtn { padding: 8px 20px; font-size: 1rem; }
+    }
+
+    /* مؤقت إضافي لأي عناصر عائمة */
+    .game-container {
+      background: #ff8fab;
+      min-height: 100vh;
+    }
+  </style>
+</head>
+<body>
+
+<!-- شاشة البداية مع قلوب متحركة -->
+<div class="start-screen" id="startScreen">
+  <button id="enter">✨ دخول ✨</button>
+</div>
+
+<!-- حاوية اللعبة الأساسية -->
+<div class="game-container" id="gameContainer">
+  <div id="score">❤️ Score 0</div>
+  <div id="msg"></div>
+  <div id="result"></div>
+  <button id="restartBtn">🔄 إعادة اللعبة 🔄</button>
+</div>
+
+<!-- ملفات الصوت (سيتم تشغيلها بعد تفاعل المستخدم) -->
+<audio id="bgMusic" src="music.mp3" loop preload="auto"></audio>
+<audio id="popSound" src="pop.mp3" preload="auto"></audio>
+
+<script>
+  // ======================== قائمة الرسائل الرومانسية ========================
+  const messagesList = [
+    "صباح الخير يقمري ",
+    "احلي حد يصحي 😘",
+    "بحبك اوي 💖",
+    "حقك عليا يحببتي 🌸",
+    "يجامده😂🔥",
+    "متزعليش يروحي 💕",
+    "انتي الحته بتاعتي 🫶",
+    "لو مضحكتيش هركبك😂🙈",
+    "ضحكتك حلوه اوي ",
+    "بخ 😂💋",
+    "غلطت بس بحبك",
+    "يا أجمد بت",
+    "بحب عيونك ❤️",
+    "بحب شفايفك 💋",
+    "بحب طيازك😂😂🍑",
+    "بحب صدرك🙈😂💕",
+    "بعشق كسكوسك بقا🙈😂",
+    "بحب كلامك ",
+    "نفسي اسمع صوتك ",
+    "موووااااه 💋💋",
+    "انتي قلبي ❤️‍🔥",
+    "مقدرش أزعلك ",
+    "وحشتيني 🥺",
+    "مش هكررها 🙏💘",
+    "متجيبي بوسه ",
+    "مراتي اهي اهي اهي 😂",
+    "سامحيني بقا 🥹💖"
+  ];
+
+  // متغيرات اللعبة
+  let currentScore = 0;
+  let spawnInterval = null;
+  let activeHearts = new Set();     // لتتبع المؤقتات ومنع التسريب
+  let gameActive = true;            // هل اللعبة نشطة (لم تنته)
+  let totalMessages = messagesList.length;
+
+  // عناصر DOM
+  const gameContainer = document.getElementById('gameContainer');
+  const startScreenDiv = document.getElementById('startScreen');
+  const scoreDiv = document.getElementById('score');
+  const msgBox = document.getElementById('msg');
+  const resultDiv = document.getElementById('result');
+  const restartBtn = document.getElementById('restartBtn');
+  const bgMusic = document.getElementById('bgMusic');
+  const popAudio = document.getElementById('popSound');
+
+  // ========== وظائف مساعدة: تأثيرات بصرية ==========
+  function createBurstEffects(x, y) {
+    // قلوب صغيرة متفجرة
+    for (let i = 0; i < 8; i++) {
+      let burstHeart = document.createElement('div');
+      burstHeart.className = 'burst';
+      burstHeart.innerHTML = '❤️';
+      burstHeart.style.left = (x + (Math.random() - 0.5) * 35) + 'px';
+      burstHeart.style.top = (y + (Math.random() - 0.5) * 30) + 'px';
+      document.body.appendChild(burstHeart);
+      setTimeout(() => burstHeart.remove(), 700);
+    }
+    // نجوم براقة
+    for (let i = 0; i < 6; i++) {
+      let star = document.createElement('div');
+      star.className = 'star';
+      star.innerHTML = '✨';
+      star.style.left = (x + (Math.random() - 0.5) * 40) + 'px';
+      star.style.top = (y + (Math.random() - 0.5) * 25) + 'px';
+      document.body.appendChild(star);
+      setTimeout(() => star.remove(), 600);
+    }
+  }
+
+  // عرض الرسالة بتأثير الطباعة
+  function showMessageWithTyping(text) {
+    if (!gameActive) return;
+    // إلغاء أي رسالة سابقة متحركة لمنع التداخل
+    if (window._msgInterval) clearInterval(window._msgInterval);
+    if (window._msgTimeout) clearTimeout(window._msgTimeout);
+    
+    msgBox.style.display = 'block';
+    msgBox.innerHTML = '';
+    let idx = 0;
+    const typingInterval = setInterval(() => {
+      if (idx < text.length) {
+        msgBox.innerHTML += text[idx];
+        idx++;
+      } else {
+        clearInterval(typingInterval);
+        // إخفاء الرسالة بعد مدة مناسبة حسب طولها
+        const duration = Math.min(2800, text.length * 60 + 800);
+        window._msgTimeout = setTimeout(() => {
+          msgBox.style.display = 'none';
+        }, duration);
+      }
+    }, 55);
+    window._msgInterval = typingInterval;
+  }
+
+  // ========== إنشاء قلب متساقط ==========
+  function createFallingHeart() {
+    if (!gameActive) return;
+
+    const heartDiv = document.createElement('div');
+    heartDiv.className = 'heart';
+    heartDiv.innerHTML = '❤️';
+    const startX = Math.random() * (window.innerWidth - 70);
+    heartDiv.style.left = startX + 'px';
+    heartDiv.style.top = '-50px';
+    document.body.appendChild(heartDiv);
+
+    let posY = -50;
+    // السرعة تزيد بصورة طفيفة كلما زادت النقاط (لكن محدودة لتجنب الصعوبة المفرطة)
+    let speed = 4 + Math.min(currentScore * 0.2, 3.8);  // max ~7.8
+    let animationFrame;
+    let isRemoved = false;
+
+    function fall() {
+      if (!gameActive || !heartDiv.isConnected) {
+        cancelAnimationFrame(animationFrame);
+        return;
+      }
+      posY += speed;
+      heartDiv.style.top = posY + 'px';
+      
+      if (posY > window.innerHeight + 80) {
+        if (heartDiv.isConnected) heartDiv.remove();
+        cancelAnimationFrame(animationFrame);
+        activeHearts.delete(animationFrame);
+        return;
+      }
+      animationFrame = requestAnimationFrame(fall);
+    }
+    
+    const frameId = requestAnimationFrame(fall);
+    activeHearts.add(frameId);
+    
+    // حدث النقر على القلب
+    heartDiv.onclick = (e) => {
+      e.stopPropagation();
+      if (!gameActive) return;
+      
+      // تشغيل صوت البوب
+      if (popAudio) {
+        popAudio.currentTime = 0;
+        popAudio.play().catch(e => console.log("pop audio error", e));
+      }
+      
+      // تأثيرات بصرية عند النقر
+      const rect = heartDiv.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      createBurstEffects(centerX, centerY);
+      
+      // إزالة القلب
+      if (heartDiv.isConnected) heartDiv.remove();
+      cancelAnimationFrame(frameId);
+      activeHearts.delete(frameId);
+      
+      // زيادة النقاط
+      if (currentScore < totalMessages) {
+        currentScore++;
+        scoreDiv.innerHTML = `❤️ Score ${currentScore} / ${totalMessages}`;
+        
+        // عرض الرسالة المناسبة (الفهرس يبدأ من 0)
+        const messageIndex = currentScore - 1;
+        if (messageIndex >= 0 && messageIndex < messagesList.length) {
+          showMessageWithTyping(messagesList[messageIndex]);
+        }
+        
+        // فحص الفوز
+        if (currentScore >= totalMessages) {
+          gameWin();
+        }
+      }
+    };
+    
+    // تخزين مرجع للإزالة الآمنة عند انتهاء اللعبة
+    heartDiv._cleanup = () => {
+      cancelAnimationFrame(frameId);
+      activeHearts.delete(frameId);
+      if (heartDiv.isConnected) heartDiv.remove();
+    };
+  }
+
+  // ========== إنهاء اللعبة بالفوز ==========
+  function gameWin() {
+    if (!gameActive) return;
+    gameActive = false;
+    
+    // إيقاف توليد القلوب الجديدة
+    if (spawnInterval) {
+      clearInterval(spawnInterval);
+      spawnInterval = null;
+    }
+    
+    // إزالة جميع القلوب النشطة من الشاشة
+    document.querySelectorAll('.heart').forEach(heart => {
+      if (heart._cleanup) heart._cleanup();
+      else heart.remove();
+    });
+    
+    // عرض رسالة النصر
+    resultDiv.style.display = 'block';
+    resultDiv.innerHTML = '🎉 عاااش يميرا يا قمر! 🎉<br>❤️ كسبتي كل القلوب ❤️';
+    
+    // إظهار زر إعادة اللعب
+    restartBtn.style.display = 'block';
+    
+    // إضافة تأثير موسيقى النصر (يمكن ترك الموسيقى الخلفية)
+  }
+
+  // ========== إعادة ضبط اللعبة بالكامل ==========
+  function resetAndRestart() {
+    // إنهاء اللعبة الحالية بهدوء
+    if (spawnInterval) {
+      clearInterval(spawnInterval);
+      spawnInterval = null;
+    }
+    
+    // إزالة كل القلوب الموجودة
+    document.querySelectorAll('.heart').forEach(heart => {
+      if (heart._cleanup) heart._cleanup();
+      else heart.remove();
+    });
+    
+    // مسح أي رسالة أو نتائج
+    msgBox.style.display = 'none';
+    resultDiv.style.display = 'none';
+    if (window._msgInterval) clearInterval(window._msgInterval);
+    if (window._msgTimeout) clearTimeout(window._msgTimeout);
+    
+    // إعادة تعيين المتغيرات
+    currentScore = 0;
+    gameActive = true;
+    scoreDiv.innerHTML = `❤️ Score 0 / ${totalMessages}`;
+    
+    // إخفاء زر إعادة اللعب
+    restartBtn.style.display = 'none';
+    
+    // بدء spawn القلوب من جديد
+    if (spawnInterval) clearInterval(spawnInterval);
+    spawnInterval = setInterval(() => {
+      if (gameActive && currentScore < totalMessages) {
+        createFallingHeart();
+      }
+    }, 1050);   // تردد معقول
+  }
+
+  // ========== بدء اللعبة لأول مرة (بعد الضغط على دخول) ==========
+  function startGame() {
+    // التأكد من إعادة ضبط كل شيء قبل البدء
+    if (spawnInterval) clearInterval(spawnInterval);
+    document.querySelectorAll('.heart').forEach(h => h.remove());
+    currentScore = 0;
+    gameActive = true;
+    scoreDiv.innerHTML = `❤️ Score 0 / ${totalMessages}`;
+    resultDiv.style.display = 'none';
+    msgBox.style.display = 'none';
+    restartBtn.style.display = 'none';
+    
+    // بدء توليد القلوب
+    spawnInterval = setInterval(() => {
+      if (gameActive && currentScore < totalMessages) {
+        createFallingHeart();
+      } else if (currentScore >= totalMessages) {
+        // إذا تم الفوز ولم يتم التوقف تلقائياً
+        if (gameActive) gameWin();
+      }
+    }, 1050);
+  }
+
+  // ========== إظهار شاشة اللعبة وإخفاء البداية ==========
+  function transitionToGame() {
+    // تشغيل الموسيقى (يجب أن يكون بسبب تفاعل المستخدم)
+    bgMusic.play().catch(e => console.log("Auto-play prevented? but user clicked", e));
+    
+    // إخفاء شاشة البداية
+    startScreenDiv.classList.add('hide');
+    // إظهار حاوية اللعبة
+    gameContainer.classList.add('active');
+    
+    // بعد التأخير البسيط نبدأ اللعبة
+    setTimeout(() => {
+      startGame();
+    }, 100);
+  }
+
+  // ========== إعادة اللعب من زر إعادة التشغيل ==========
+  function handleRestart() {
+    if (!gameActive && currentScore >= totalMessages) {
+      resetAndRestart();
+    } else if (!gameActive) {
+      resetAndRestart();
+    } else {
+      // لو اللعبة لسه شغالة لكن المستخدم ضغط إعادة (اختياري)
+      if (confirm("هل تريد إنهاء الجولة الحالية والبدء من جديد؟")) {
+        resetAndRestart();
+      }
+    }
+  }
+
+  // ========== توليد القلوب الخلفية في شاشة البداية (زينة فقط) ==========
+  function startBackgroundHearts() {
+    setInterval(() => {
+      if (startScreenDiv && !startScreenDiv.classList.contains('hide')) {
+        const heartSpan = document.createElement('div');
+        heartSpan.className = 'floating-heart';
+        heartSpan.innerHTML = Math.random() > 0.6 ? '❤️' : '💗';
+        heartSpan.style.left = Math.random() * 100 + '%';
+        heartSpan.style.fontSize = (18 + Math.random() * 20) + 'px';
+        heartSpan.style.animationDuration = 6 + Math.random() * 5 + 's';
+        startScreenDiv.appendChild(heartSpan);
+        setTimeout(() => heartSpan.remove(), 8000);
+      }
+    }, 380);
+  }
+
+  // ========== إضافة مستمعات الأحداث ==========
+  function bindEvents() {
+    const enterBtn = document.getElementById('enter');
+    if (enterBtn) {
+      enterBtn.addEventListener('click', transitionToGame);
+    }
+    
+    restartBtn.addEventListener('click', handleRestart);
+    
+    // منع السقوط خارج الشاشة عند تغيير الحجم (ليس ضروري لكن جيد)
+    window.addEventListener('resize', () => {
+      // لا حاجة لإعادة ضبط القلوب، لكن نتجنب الأخطاء
+      if (!gameActive) return;
+    });
+  }
+
+  // ========== تهيئة الصفحة بالكامل ==========
+  function init() {
+    bindEvents();
+    startBackgroundHearts();
+    // التأكد من أن الصوت لن يتم تشغيله إلا بعد النقر (متصفحات حديثة)
+    // لكن نجهز الملفات للاستخدام
+    if (bgMusic) bgMusic.volume = 0.45;
+    if (popAudio) popAudio.volume = 0.6;
+    
+    // بداية لا تظهر اللعبة
+    gameContainer.classList.remove('active');
+    startScreenDiv.classList.remove('hide');
+  }
+
+  // بدء التطبيق
+  init();
+</script>
+</body>
+</html>
